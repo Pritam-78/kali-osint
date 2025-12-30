@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KALI OSINT - FINAL STABLE</title>
+    <style>
+        :root { --kali-bg: #0c0c0c; --kali-green: #27ae60; --kali-blue: #2980b9; --kali-red: #c0392b; --neon: #00ff00; }
+        body { background: var(--kali-bg); color: #d1d1d1; font-family: 'Courier New', monospace; padding: 15px; margin: 0; }
+        .terminal { width: 100%; max-width: 550px; margin: auto; border: 1px solid #333; background: #111; box-shadow: 0 0 30px #000; }
+        
+        .header { text-align: center; padding: 20px; border-bottom: 1px solid #222; }
+        .header pre { color: var(--kali-blue); font-size: 9px; line-height: 10px; margin-bottom: 10px; font-weight: bold; }
+        .header h2 { color: var(--kali-red); margin: 0; letter-spacing: 3px; font-size: 1.4rem; text-shadow: 0 0 10px var(--kali-red); }
+
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 20px; }
+        .cmd-btn { background: #1a1a1a; color: #ddd; border: 1px solid #444; padding: 12px; cursor: pointer; font-size: 11px; text-align: left; }
+        .cmd-btn:hover { border-color: var(--neon); color: var(--neon); }
+
+        #input-area { display: none; padding: 20px; border-top: 1px solid #222; background: #151515; }
+        .prompt { color: var(--kali-blue); font-size: 13px; margin-bottom: 10px; font-weight: bold; }
+        .input-box { background: #000; border: 1px solid var(--kali-blue); color: var(--neon); width: 100%; padding: 12px; box-sizing: border-box; outline: none; margin-bottom: 10px; }
+        
+        #token-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; justify-content: center; align-items: center; }
+        .token-box { background: #111; border: 1px solid var(--kali-red); padding: 30px; width: 340px; text-align: center; border-radius: 5px; }
+        .instruction-box { display: none; text-align: left; background: #1a1a1a; padding: 15px; margin-top: 15px; border: 1px solid #333; font-size: 11px; color: #bbb; }
+        
+        .exec-btn { background: var(--kali-red); color: white; border: none; width: 100%; padding: 12px; cursor: pointer; font-weight: bold; text-transform: uppercase; }
+        .tg-btn { background: #229ED9; color: white; border: none; width: 100%; padding: 10px; margin-top: 10px; cursor: pointer; font-weight: bold; display: block; text-decoration: none; text-align: center; }
+
+        #loader { display: none; color: #ffcc00; text-align: center; padding: 15px; font-size: 13px; }
+        #resultFrame { display: none; padding: 20px; border-top: 1px solid #333; background: #0a0a0a; line-height: 1.6; }
+        .data-line { display: flex; font-size: 12px; margin-bottom: 5px; border-bottom: 1px solid #151515; padding-bottom: 3px; }
+        .label { color: #888; width: 130px; }
+        .value { color: #fff; flex: 1; text-align: right; word-break: break-all; }
+        .pro-tip { border: 1px solid #ffcc00; color: #ffcc00; padding: 12px; font-size: 11px; margin-top: 20px; background: rgba(255, 204, 0, 0.1); border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+<div id="token-modal">
+    <div class="token-box">
+        <div id="token-input-view">
+            <h3 style="color:var(--kali-red); margin:0;">SYSTEM LOCK</h3>
+            <p style="font-size: 11px; color: #666; margin-bottom: 15px;">Encrypted Database. Enter Token to Access.</p>
+            <input type="text" id="tokenInput" class="input-box" placeholder="Paste Token From Bot...">
+            <button class="exec-btn" onclick="verifyToken()">DECRYPT & SCAN</button>
+            <div style="margin-top: 15px; color: var(--kali-blue); cursor: pointer; font-size: 11px; font-weight: bold;" onclick="showInstructions()">[ How to get Access Token? ]</div>
+        </div>
+        
+        <div id="instruction-ui" class="instruction-box">
+            <b style="color:var(--neon)">HOW TO GET TOKEN:</b><br><br>
+            1. Click <b>"OPEN CHANNEL"</b> below.<br>
+            2. <b>Join</b> our Telegram Channel.<br>
+            3. Check <b>Channel Description/Bio</b> for Bot link.<br>
+            4. Start Bot to get your <b>Secret Token</b>.<br><br>
+            <a href="https://t.me/+X6qW0lrUzN5hYzA9" target="_blank" class="tg-btn">1. OPEN CHANNEL</a>
+            <button class="exec-btn" style="background:#444; margin-top:5px;" onclick="hideInstructions()">BACK</button>
+        </div>
+        <div id="token-err" style="color:red; font-size:10px; margin-top:10px; display:none;">ACCESS DENIED: Invalid Token!</div>
+    </div>
+</div>
+
+<div class="terminal">
+    <div class="header">
+<pre>
+ ██████╗ ███████╗██╗███╗   ██╗████████╗
+██╔═══██╗██╔════╝██║████╗  ██║╚══██╔══╝
+██║   ██║███████╗██║██╔██╗ ██║   ██║   
+██║   ██║╚════██║██║██║╚██╗██║   ██║   
+╚██████╔╝███████║██║██║ ╚████║   ██║   
+ ╚═════╝ ╚══════╝╚═╝╚═╝  ╚═══╝   ╚═╝   </pre>
+        <h2>KALI OSINT FRAMEWORK</h2>
+        <div style="font-size: 10px; color: var(--kali-green); margin-top: 5px;">[ 100% FIXED | VERSION 4.9 ]</div>
+    </div>
+
+    <div class="grid" id="main-grid">
+        <button class="cmd-btn" onclick="openInput('mobile', 'number', 'MOBILE NUMBER')">./scan_mobile.sh</button>
+        <button class="cmd-btn" onclick="openInput('upi', 'id', 'UPI ID / VPA')">./upi_lookup.py</button>
+        <button class="cmd-btn" onclick="openInput('vehicle', 'registration', 'VEHICLE NO')">./rto_db.bin</button>
+        <button class="cmd-btn" onclick="openInput('aadhaar', 'id', 'AADHAAR NO')">./aadhaar_scan.sh</button>
+        <button class="cmd-btn" onclick="openInput('pan', 'pan', 'PAN CARD NO')">./pan_verify.sh</button>
+        <button class="cmd-btn" onclick="openInput('gst', 'number', 'GSTIN NO')">./gst_dump.py</button>
+        <button class="cmd-btn" onclick="openInput('rashan', 'aadhaar', 'AADHAAR (RASHAN)')">./rashan_find.sh</button>
+        <button class="cmd-btn" onclick="openInput('ifsc', 'code', 'IFSC CODE')">./bank_node.bin</button>
+    </div>
+
+    <div id="input-area">
+        <div class="prompt" id="prompt-text">┌──(kali㉿osint)-[~]</div>
+        <input type="text" id="targetInput" class="input-box" placeholder="Awaiting input...">
+        <button class="exec-btn" onclick="askToken()">Execute Scan</button>
+        <br><button style="background:none; border:none; color:#555; font-size:10px; cursor:pointer;" onclick="location.reload()">[ CANCEL ]</button>
+    </div>
+
+    <div id="loader">>> INJECTING EXPLOIT... PLEASE WAIT...</div>
+
+    <div id="resultFrame">
+        <div style="color:var(--kali-blue); border-bottom:1px solid #222; font-size:13px; margin-bottom:10px;">📊 RESULTS FOUND:</div>
+        <div id="parsedData"></div>
+        <div id="proTip" class="pro-tip" style="display:none;"></div>
+    </div>
+</div>
+
+<script>
+    const VALID_TOKEN = "OSINT_ADMIN_2025"; 
+    let activeEP = ''; let activePR = '';
+
+    function openInput(ep, pr, label) {
+        activeEP = ep; activePR = pr;
+        document.getElementById('main-grid').style.display = 'none';
+        document.getElementById('input-area').style.display = 'block';
+        document.getElementById('targetInput').placeholder = `ENTER ${label}...`;
+        document.getElementById('prompt-text').innerText = `┌──(kali㉿osint)-[/${ep}]`;
+        document.getElementById('targetInput').focus();
+    }
+
+    function askToken() {
+        if(!document.getElementById('targetInput').value) return;
+        document.getElementById('token-modal').style.display = 'flex';
+    }
+
+    function showInstructions() {
+        document.getElementById('token-input-view').style.display = 'none';
+        document.getElementById('instruction-ui').style.display = 'block';
+    }
+
+    function hideInstructions() {
+        document.getElementById('token-input-view').style.display = 'block';
+        document.getElementById('instruction-ui').style.display = 'none';
+    }
+
+    function verifyToken() {
+        const tInput = document.getElementById('tokenInput').value.trim();
+        if(tInput === VALID_TOKEN) {
+            document.getElementById('token-modal').style.display = 'none';
+            executeFetch();
+        } else {
+            document.getElementById('token-err').style.display = 'block';
+        }
+    }
+
+    async function executeFetch() {
+        const val = document.getElementById('targetInput').value;
+        const loader = document.getElementById('loader');
+        const frame = document.getElementById('resultFrame');
+        
+        loader.style.display = 'block';
+        frame.style.display = 'none';
+
+        try {
+            const resp = await fetch(`https://api.b77bf911.workers.dev/${activeEP}?${activePR}=${val}`);
+            const json = await resp.json();
+            
+            // Fixed Parsing Logic to handle different API structures
+            let resultsArray = [];
+            if(json.data && json.data.result) {
+                resultsArray = Array.isArray(json.data.result) ? json.data.result : [json.data.result];
+            } else if(json.data && json.data.data && json.data.data.result) {
+                resultsArray = json.data.data.result;
+            } else if(json.result) {
+                resultsArray = Array.isArray(json.result) ? json.result : [json.result];
+            } else {
+                resultsArray = [json];
+            }
+            
+            renderUI(resultsArray);
+        } catch (e) { 
+            loader.innerText = "FATAL ERROR: API_NOT_RESPONDING"; 
+        }
+    }
+
+    function renderUI(dataList) {
+        let finalHtml = "";
+        const mapping = {
+            "mobile": "📞 Mobile", 
+            "name": "👨 Name", 
+            "father_name": "👴 Father", 
+            "address": "🏠 Address", 
+            "id_number": "🖄 ID/Aadhaar", 
+            "circle": "📍 Circle",
+            "vpa": "💸 UPI ID"
+        };
+        
+        let foundAadhaar = "";
+
+        dataList.forEach((info, index) => {
+            if(!info || (!info.name && !info.mobile && !info.vpa)) return;
+            
+            // Capture Aadhaar for Pro-Tip
+            if(info.id_number) foundAadhaar = info.id_number;
+
+            let blockHtml = `<div style="border:1px solid #222; padding:10px; margin-bottom:15px; background:#111;">`;
+            blockHtml += `<div style="color:var(--kali-blue); font-size:10px; margin-bottom:5px;">RECORD #${index+1}</div>`;
+            
+            for (let key in mapping) {
+                if (info[key]) {
+                    let cleanVal = info[key].toString().replace(/[!]+/g, ", ");
+                    blockHtml += `
+                        <div class="data-line">
+                            <span class="label">${mapping[key]}:</span>
+                            <span class="value ${key === 'name' ? 'highlight' : ''}">${cleanVal}</span>
+                        </div>`;
+                }
+            }
+            blockHtml += `</div>`;
+            finalHtml += blockHtml;
+        });
+
+        document.getElementById('parsedData').innerHTML = finalHtml || "<div style='color:red; text-align:center;'>NO RECORD FOUND IN DATABASE</div>";
+        
+        // Final Fix for Pro-Tip
+        const tip = document.getElementById('proTip');
+        if(foundAadhaar) {
+            tip.style.display = 'block';
+            tip.innerHTML = `💡 <b>PRO TIP:</b> Aadhaar ID Detected (${foundAadhaar}). You can cross-scan this in the 'Aadhaar' section to find linked mobile numbers.`;
+        } else {
+            tip.style.display = 'none';
+        }
+
+        document.getElementById('loader').style.display = 'none';
+        document.getElementById('resultFrame').style.display = 'block';
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+</script>
+</body>
+</html>
